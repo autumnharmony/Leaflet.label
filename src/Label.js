@@ -1,6 +1,7 @@
 var LeafletLabel = L.Class.extend({
 
-	includes: L.Mixin.Events,
+	//includes: L.Mixin.Events,
+	includes: (L.Evented || L.Mixin.Events),
 
 	options: {
 		className: '',
@@ -202,6 +203,15 @@ var LeafletLabel = L.Class.extend({
 		L.DomUtil.addClass(container, 'leaflet-clickable');
 		L.DomEvent.on(container, 'click', this._onMouseClick, this);
 
+		if (!this.options.draggable) { return; }
+		else { container.setAttribute('draggable', true); }
+
+		console.log("drag event handlers start");
+		L.DomEvent.on(container, 'dragstart', this._onDragStart, this);
+		L.DomEvent.on(container, 'drag', this._onDrag, this);
+		L.DomEvent.on(container, 'dragend', this._onDragEnd, this);
+		console.log("drag event handlers end");
+
 		for (var i = 0; i < events.length; i++) {
 			L.DomEvent.on(container, events[i], this._fireMouseEvent, this);
 		}
@@ -215,6 +225,9 @@ var LeafletLabel = L.Class.extend({
 
 		L.DomUtil.removeClass(container, 'leaflet-clickable');
 		L.DomEvent.off(container, 'click', this._onMouseClick, this);
+		L.DomEvent.off(container, 'dragstart', this._onDragStart, this);
+		L.DomEvent.off(container, 'drag', this._onDrag, this);
+		L.DomEvent.off(container, 'dragend', this._onDragEnd, this);
 
 		for (var i = 0; i < events.length; i++) {
 			L.DomEvent.off(container, events[i], this._fireMouseEvent, this);
@@ -222,6 +235,46 @@ var LeafletLabel = L.Class.extend({
 	},
 
 	_onMouseClick: function (e) {
+		console.log("mouseclick");
+		// if (this.hasEventListeners(e.type)) {
+		L.DomEvent.stopPropagation(e);
+		// }
+
+		this.fire(e.type, {
+			originalEvent: e
+		});
+	},
+
+	_onDragStart: function (e) {
+		console.log("dragstart");
+		if (this.hasEventListeners(e.type)) {
+			L.DomEvent.stopPropagation(e);
+		}
+
+		this.fire(e.type, {
+			originalEvent: e
+		});
+	},
+
+	_onDrag: function (e) {
+		if (e.clientX === 0 || e.clientY === 0) { return; }
+		console.log("drag " + e.clientX + " " + e.clientY);
+		if (this.hasEventListeners(e.type)) {
+			L.DomEvent.stopPropagation(e);
+		}
+
+		this.fire(e.type, {
+			originalEvent: e
+		});
+
+		// var point = L.point(e.screenX, e.screenY);
+		var point = L.point(e.clientX, e.clientY);
+		this._latlng = this._map.layerPointToLatLng(this._map.containerPointToLayerPoint(point));
+		this._updatePosition();
+	},
+
+	_onDragEnd: function (e) {
+		console.log("dragend");
 		if (this.hasEventListeners(e.type)) {
 			L.DomEvent.stopPropagation(e);
 		}
@@ -232,19 +285,24 @@ var LeafletLabel = L.Class.extend({
 	},
 
 	_fireMouseEvent: function (e) {
+		console.log("fireMouseEvent " + e.type);
 		this.fire(e.type, {
 			originalEvent: e
 		});
+
+		// if (e.type === 'dragstart' || e.type === 'drag' || e.type === 'dragend') {
+			// L.DomEvent.stopPropagation(e);
+		// }
 
 		// TODO proper custom event propagation
 		// this line will always be called if marker is in a FeatureGroup
 		if (e.type === 'contextmenu' && this.hasEventListeners(e.type)) {
 			L.DomEvent.preventDefault(e);
 		}
-		if (e.type !== 'mousedown') {
-			L.DomEvent.stopPropagation(e);
-		} else {
-			L.DomEvent.preventDefault(e);
-		}
+		// if (e.type !== 'mousedown') {
+		L.DomEvent.stopPropagation(e);
+		// } else {
+			// L.DomEvent.preventDefault(e);
+		// }
 	}
 });
