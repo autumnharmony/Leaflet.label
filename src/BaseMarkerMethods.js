@@ -126,6 +126,7 @@ L.BaseMarkerMethods = {
 	},
 
 	_moveLabel: function (e) {
+		console.log("moveLabel");
 		this.label.setLatLng(e.latlng);
 	}
 };

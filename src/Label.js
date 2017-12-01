@@ -236,9 +236,9 @@ var LeafletLabel = L.Class.extend({
 
 	_onMouseClick: function (e) {
 		console.log("mouseclick");
-		// if (this.hasEventListeners(e.type)) {
-		L.DomEvent.stopPropagation(e);
-		// }
+		if (this.hasEventListeners(e.type)) {
+			L.DomEvent.stopPropagation(e);
+		}
 
 		this.fire(e.type, {
 			originalEvent: e
@@ -254,22 +254,44 @@ var LeafletLabel = L.Class.extend({
 		this.fire(e.type, {
 			originalEvent: e
 		});
+
+		e.dataTransfer.effectAllowed = "move";
+
+		// var p = this._getMousePos(this._content, e);
+		// console.log("x" + p.x);
+		// console.log("y" + p.y);
+	},
+
+	_getMousePos: function (elem, evt) {
+		var rect = elem.getBoundingClientRect();
+		return {
+				x: Math.floor((evt.clientX - rect.left) / (rect.right - rect.left) * elem.width),
+				y: Math.floor((evt.clientY - rect.top) / (rect.bottom - rect.top) * elem.height)
+			};
 	},
 
 	_onDrag: function (e) {
+		console.log("drag");
+
 		if (e.clientX === 0 || e.clientY === 0) { return; }
-		console.log("drag " + e.clientX + " " + e.clientY);
-		if (this.hasEventListeners(e.type)) {
-			L.DomEvent.stopPropagation(e);
-		}
+		// console.log("drag " + e.clientX + " " + e.clientY);
+		// if (this.hasEventListeners(e.type)) {
+		// 	L.DomEvent.stopPropagation(e);
+		// }
 
 		this.fire(e.type, {
 			originalEvent: e
 		});
 
-		// var point = L.point(e.screenX, e.screenY);
-		var point = L.point(e.clientX, e.clientY);
-		this._latlng = this._map.layerPointToLatLng(this._map.containerPointToLayerPoint(point));
+		var pos = this._map.latLngToLayerPoint(this._latlng);
+		var newLabelPos = L.point(e.clientX, e.clientY);
+
+
+
+		var dx = newLabelPos.x - pos.x;
+		var dy = newLabelPos.y - pos.y;
+		this.options.offset = [dx, dy];
+		this.offset = L.point(dx, dy);
 		this._updatePosition();
 	},
 
@@ -282,6 +304,17 @@ var LeafletLabel = L.Class.extend({
 		this.fire(e.type, {
 			originalEvent: e
 		});
+
+		var pos = this._map.latLngToLayerPoint(this._latlng);
+		var newLabelPos = L.point(e.clientX, e.clientY);
+
+
+
+		var dx = newLabelPos.x - pos.x;
+		var dy = newLabelPos.y - pos.y;
+		this.options.offset = [dx, dy];
+		this.offset = L.point(dx, dy);
+		this._updatePosition();
 	},
 
 	_fireMouseEvent: function (e) {
@@ -289,10 +322,6 @@ var LeafletLabel = L.Class.extend({
 		this.fire(e.type, {
 			originalEvent: e
 		});
-
-		// if (e.type === 'dragstart' || e.type === 'drag' || e.type === 'dragend') {
-			// L.DomEvent.stopPropagation(e);
-		// }
 
 		// TODO proper custom event propagation
 		// this line will always be called if marker is in a FeatureGroup

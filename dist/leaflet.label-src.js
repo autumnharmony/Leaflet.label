@@ -27,7 +27,8 @@ L.labelVersion = '0.2.4';
 
 var LeafletLabel = L.Class.extend({
 
-	includes: L.Mixin.Events,
+	//includes: L.Mixin.Events,
+	includes: (L.Evented || L.Mixin.Events),
 
 	options: {
 		className: '',
@@ -229,6 +230,15 @@ var LeafletLabel = L.Class.extend({
 		L.DomUtil.addClass(container, 'leaflet-clickable');
 		L.DomEvent.on(container, 'click', this._onMouseClick, this);
 
+		if (!this.options.draggable) { return; }
+		else { container.setAttribute('draggable', true); }
+
+		console.log("drag event handlers start");
+		L.DomEvent.on(container, 'dragstart', this._onDragStart, this);
+		L.DomEvent.on(container, 'drag', this._onDrag, this);
+		L.DomEvent.on(container, 'dragend', this._onDragEnd, this);
+		console.log("drag event handlers end");
+
 		for (var i = 0; i < events.length; i++) {
 			L.DomEvent.on(container, events[i], this._fireMouseEvent, this);
 		}
@@ -242,6 +252,9 @@ var LeafletLabel = L.Class.extend({
 
 		L.DomUtil.removeClass(container, 'leaflet-clickable');
 		L.DomEvent.off(container, 'click', this._onMouseClick, this);
+		L.DomEvent.off(container, 'dragstart', this._onDragStart, this);
+		L.DomEvent.off(container, 'drag', this._onDrag, this);
+		L.DomEvent.off(container, 'dragend', this._onDragEnd, this);
 
 		for (var i = 0; i < events.length; i++) {
 			L.DomEvent.off(container, events[i], this._fireMouseEvent, this);
@@ -249,6 +262,7 @@ var LeafletLabel = L.Class.extend({
 	},
 
 	_onMouseClick: function (e) {
+		console.log("mouseclick");
 		if (this.hasEventListeners(e.type)) {
 			L.DomEvent.stopPropagation(e);
 		}
@@ -258,7 +272,80 @@ var LeafletLabel = L.Class.extend({
 		});
 	},
 
+	_onDragStart: function (e) {
+		console.log("dragstart");
+		if (this.hasEventListeners(e.type)) {
+			L.DomEvent.stopPropagation(e);
+		}
+
+		this.fire(e.type, {
+			originalEvent: e
+		});
+
+		e.dataTransfer.effectAllowed = "move";
+
+		// var p = this._getMousePos(this._content, e);
+		// console.log("x" + p.x);
+		// console.log("y" + p.y);
+	},
+
+	_getMousePos: function (elem, evt) {
+		var rect = elem.getBoundingClientRect();
+		return {
+				x: Math.floor((evt.clientX - rect.left) / (rect.right - rect.left) * elem.width),
+				y: Math.floor((evt.clientY - rect.top) / (rect.bottom - rect.top) * elem.height)
+			};
+	},
+
+	_onDrag: function (e) {
+		console.log("drag");
+
+		if (e.clientX === 0 || e.clientY === 0) { return; }
+		// console.log("drag " + e.clientX + " " + e.clientY);
+		// if (this.hasEventListeners(e.type)) {
+		// 	L.DomEvent.stopPropagation(e);
+		// }
+
+		this.fire(e.type, {
+			originalEvent: e
+		});
+
+		var pos = this._map.latLngToLayerPoint(this._latlng);
+		var newLabelPos = L.point(e.clientX, e.clientY);
+
+
+
+		var dx = newLabelPos.x - pos.x;
+		var dy = newLabelPos.y - pos.y;
+		this.options.offset = [dx, dy];
+		this.offset = L.point(dx, dy);
+		this._updatePosition();
+	},
+
+	_onDragEnd: function (e) {
+		console.log("dragend");
+		if (this.hasEventListeners(e.type)) {
+			L.DomEvent.stopPropagation(e);
+		}
+
+		this.fire(e.type, {
+			originalEvent: e
+		});
+
+		var pos = this._map.latLngToLayerPoint(this._latlng);
+		var newLabelPos = L.point(e.clientX, e.clientY);
+
+
+
+		var dx = newLabelPos.x - pos.x;
+		var dy = newLabelPos.y - pos.y;
+		this.options.offset = [dx, dy];
+		this.offset = L.point(dx, dy);
+		this._updatePosition();
+	},
+
 	_fireMouseEvent: function (e) {
+		console.log("fireMouseEvent " + e.type);
 		this.fire(e.type, {
 			originalEvent: e
 		});
@@ -268,11 +355,11 @@ var LeafletLabel = L.Class.extend({
 		if (e.type === 'contextmenu' && this.hasEventListeners(e.type)) {
 			L.DomEvent.preventDefault(e);
 		}
-		if (e.type !== 'mousedown') {
-			L.DomEvent.stopPropagation(e);
-		} else {
-			L.DomEvent.preventDefault(e);
-		}
+		// if (e.type !== 'mousedown') {
+		L.DomEvent.stopPropagation(e);
+		// } else {
+			// L.DomEvent.preventDefault(e);
+		// }
 	}
 });
 
@@ -405,6 +492,7 @@ L.BaseMarkerMethods = {
 	},
 
 	_moveLabel: function (e) {
+		console.log("moveLabel");
 		this.label.setLatLng(e.latlng);
 	}
 };
